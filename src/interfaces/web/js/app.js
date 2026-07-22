@@ -55,7 +55,7 @@ function showSection(sectionId) {
     console.log(`[Nav] Switching to section: ${sectionId}`);
     
     // 1. Hide all sections
-    const sections = ['clients', 'payments', 'global_payments', 'subscriptions', 'master_control'];
+    const sections = ['clients', 'payments', 'global_payments', 'subscriptions', 'master_control', 'logs'];
     sections.forEach(s => {
         const el = document.getElementById(`section-${s}`);
         if (el) el.classList.add('hidden');
@@ -84,7 +84,8 @@ function showSection(sectionId) {
         'payments': 'Cobros y Enlaces de Pago',
         'global_payments': 'Monitoreo Global de Pagos',
         'subscriptions': 'Planes Recurrentes',
-        'master_control': 'Master Control Plane'
+        'master_control': 'Master Control Plane',
+        'logs': 'Logs Infra API'
     };
     document.getElementById('section-title').innerText = titleMap[sectionId] || 'Panel de Control';
 
@@ -99,6 +100,20 @@ function showSection(sectionId) {
     // 6. Special Loaders
     if (sectionId === 'master_control') {
         loadMasterTenants();
+    } else if (sectionId === 'logs') {
+        loadLogs();
+    }
+}
+
+async function loadLogs() {
+    const logsContent = document.getElementById('logs-content');
+    if (!logsContent) return;
+    logsContent.innerText = 'Cargando...';
+    try {
+        const data = await apiFetch('/api/admin/subscriptions');
+        logsContent.innerText = JSON.stringify(data, null, 2);
+    } catch (e) {
+        logsContent.innerText = 'Error cargando logs: ' + e.message;
     }
 }
 
@@ -348,37 +363,38 @@ function showQR(url) {
 }
 
 async function loadSubscriptions() {
-    if (!activeClientId) {
-        const grid = document.getElementById('subscriptions-grid');
-        if (grid) grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-400 italic">Por favor, selecciona un cliente primero.</div>';
-        return;
-    }
+    const grid = document.getElementById('subscriptions-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-400 italic">Cargando suscripciones...</div>';
+    
     try {
-        const data = await apiFetch(`/subscriptions/${activeClientId}`);
-        const grid = document.getElementById('subscriptions-grid');
-        if (!grid) return;
+        const data = await apiFetch('/api/admin/subscriptions');
         grid.innerHTML = '';
+        
         if (data.subscriptions.length === 0) {
-            grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-400 italic">No hay suscripciones activas para este cliente.</div>';
+            grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-400 italic">No hay dueños registrados.</div>';
             return;
         }
+        
         data.subscriptions.forEach(s => {
+            const statusColor = s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
             grid.innerHTML += `
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-purple-100 hover:shadow-md transition-all">
                     <div class="flex justify-between items-start mb-4">
-                        <div class="w-10 h-10 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-sync"></i></div>
-                        <span class="text-[10px] font-bold uppercase px-2 py-1 rounded bg-green-100 text-green-700">${s.status}</span>
+                        <div class="w-10 h-10 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center"><i class="fa-solid fa-user"></i></div>
+                        <span class="text-[10px] font-bold uppercase px-2 py-1 rounded ${statusColor}">${s.status}</span>
                     </div>
-                    <h4 class="font-bold text-slate-800">Plan: ${s.plan_id}</h4>
-                    <p class="text-2xl font-bold text-slate-900 my-2">$${s.amount} <span class="text-sm font-normal text-slate-500">/${s.frequency === 'monthly' ? 'mes' : 'año'}</span></p>
-                    <div class="mt-4 pt-4 border-t text-xs text-slate-400 flex justify-between">
-                        <span>ID: ${s.id}</span>
-                        <span>${new Date(s.created_at).toLocaleDateString()}</span>
+                    <h4 class="font-bold text-slate-800">${s.cliente_nombre || s.username}</h4>
+                    <p class="text-sm text-slate-500 mb-4">Plan: ${s.plan.toUpperCase()}</p>
+                    <div class="text-xs text-slate-400 flex justify-between">
+                        <span>Expira: ${s.expiry_date ? new Date(s.expiry_date).toLocaleDateString() : 'N/A'}</span>
                     </div>
                 </div>
             `;
         });
     } catch (e) {
+        grid.innerHTML = `<div class="col-span-full p-8 text-center text-red-500">Error cargando suscripciones: ${e.message}</div>`;
         console.error('Error cargando suscripciones:', e);
     }
 }

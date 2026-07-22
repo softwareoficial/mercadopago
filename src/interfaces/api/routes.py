@@ -29,16 +29,29 @@ def list_commands():
 
 @app.route("/clients", methods=["GET"])
 def get_clients():
-    """Lists all clients."""
-    db = SessionLocal()
+    """Lists all clients, mapped to frontend expectations."""
     try:
-        cmd = CommandRegistry.get_command("client:list")
-        clients = cmd.execute(db=db)
-        return jsonify({"status": "success", "clients": clients})
+        infra = InfraAPIClient()
+        result = infra.execute("list-owners", {})
+        
+        # Mapeo: Infra devuelve 'owners', Frontend espera 'clients'
+        owners = result.get("owners", [])
+        mapped_clients = []
+        for o in owners:
+            # private_config está en el objeto root del owner
+            sub = o.get("private_config", {}).get("subscription", {})
+            mapped_clients.append({
+                "id": o.get("cliente_id"),
+                "name": o.get("cliente_nombre") or o.get("username"),
+                "email": o.get("username"),
+                "account_status": "active", # Placeholder por ahora
+                "has_whatsapp_hub": False, # Placeholder
+                "has_stock_pro": sub.get("plan") == "pro"
+            })
+            
+        return jsonify({"status": "success", "clients": mapped_clients})
     except Exception as e:
         return jsonify({"status": "error", "detail": str(e)}), 500
-    finally:
-        db.close()
 
 @app.route("/clients", methods=["POST"])
 def create_client():
@@ -146,21 +159,27 @@ def provision_client():
 
 from src.core.infra_api_client import InfraAPIClient
 
-@app.route("/api/admin/subscriptions", methods=["GET"])
-def get_all_subscriptions():
-    """Endpoint de administración: Lista todos los dueños con sus planes desde Infra."""
+@app.route("/subscriptions", methods=["GET"])
+def list_subscriptions():
+    """Endpoint para la sección 'Suscripciones': Lista todos los dueños y su plan actual."""
     try:
         infra = InfraAPIClient()
         result = infra.execute("list-owners", {})
         
-        if result.get("status") == "success":
-            return jsonify({
-                "status": "success",
-                "subscriptions": result.get("owners", [])
+        owners = result.get("owners", [])
+        mapped_subs = []
+        for o in owners:
+            sub = o.get("private_config", {}).get("subscription", {})
+            mapped_subs.append({
+                "id": o.get("cliente_id"),
+                "username": o.get("username"),
+                "cliente_nombre": o.get("cliente_nombre"),
+                "plan": sub.get("plan", "free"),
+                "expiry_date": sub.get("plan_expiry_date"),
+                "status": "active" if sub.get("plan") != "free" else "inactive"
             })
-        else:
-            return jsonify({"status": "error", "message": "Error al obtener datos de Infra"}), 500
             
+        return jsonify({"status": "success", "subscriptions": mapped_subs})
     except Exception as e:
         return jsonify({"status": "error", "detail": str(e)}), 500
 
