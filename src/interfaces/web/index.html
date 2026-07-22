@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Gateway Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .sidebar-link.active { background: #3b82f6; color: white; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 text-white flex flex-col">
+        <div class="p-6 text-2xl font-bold border-b border-slate-800">
+            <i class="fa-solid fa-credit-card text-blue-400 mr-2"></i> Gateway
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="#" onclick="showSection('clients')" id="link-clients" class="sidebar-link active flex items-center p-3 rounded-lg transition-all hover:bg-slate-800">
+                <i class="fa-solid fa-users mr-3"></i> Clientes
+            </a>
+            <a href="#" onclick="showSection('payments')" id="link-payments" class="sidebar-link flex items-center p-3 rounded-lg transition-all hover:bg-slate-800">
+                <i class="fa-solid fa-money-bill-transfer mr-3"></i> Pagos Cliente
+            </a>
+            <a href="#" onclick="showSection('global_payments')" id="link-global_payments" class="sidebar-link flex items-center p-3 rounded-lg transition-all hover:bg-slate-800">
+                <i class="fa-solid fa-globe mr-3"></i> Pagos Globales
+            </a>
+            <a href="#" onclick="showSection('subscriptions')" id="link-subscriptions" class="sidebar-link flex items-center p-3 rounded-lg transition-all hover:bg-slate-800">
+                <i class="fa-solid fa-calendar-check mr-3"></i> Suscripciones
+            </a>
+        </nav>
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+            v1.0.0 Multi-Tenant
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col">
+        <header class="h-16 bg-white border-b flex items-center justify-between px-8 shadow-sm">
+            <h2 id="section-title" class="text-xl font-semibold">Gestión de Clientes</h2>
+            <div id="client-selector-container" class="hidden flex items-center space-x-3">
+                <span class="text-sm text-slate-500">Cliente Activo:</span>
+                <select id="active-client-select" onchange="updateActiveClient()" class="border rounded-md px-3 py-1 text-sm font-medium bg-slate-50">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+        </header>
+
+        <div id="content" class="p-8 space-y-6">
+            <!-- Section: Clients -->
+            <section id="section-clients" class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-medium">Listado de Tenants</h3>
+                    <button onclick="openModal('modal-client')" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all shadow-lg">
+                        <i class="fa-solid fa-plus mr-2"></i> Nuevo Cliente
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="clients-grid">
+                    <!-- Client cards populated by JS -->
+                </div>
+            </section>
+
+            <!-- Section: Payments -->
+            <section id="section-payments" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-medium">Cobros y Enlaces de Pago</h3>
+                    <button onclick="openModal('modal-payment')" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all shadow-lg">
+                        <i class="fa-solid fa-link mr-2"></i> Generar Link/QR
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden border">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="p-4 font-semibold text-sm">ID</th>
+                                <th class="p-4 font-semibold text-sm">Monto</th>
+                                <th class="p-4 font-semibold text-sm">Estado</th>
+                                <th class="p-4 font-semibold text-sm">Fecha</th>
+                                <th class="p-4 font-semibold text-sm text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="payments-table-body">
+                            <!-- Rows populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section: Global Payments -->
+            <section id="section-global_payments" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-medium">Monitoreo Global de Pagos</h3>
+                    <span class="text-xs text-slate-500 italic">Vista administrativa de todos los tenants</span>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden border">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="p-4 font-semibold text-sm">ID</th>
+                                <th class="p-4 font-semibold text-sm">Cliente</th>
+                                <th class="p-4 font-semibold text-sm">Monto</th>
+                                <th class="p-4 font-semibold text-sm">Estado</th>
+                                <th class="p-4 font-semibold text-sm">Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody id="global-payments-table-body">
+                            <!-- Rows populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section: Subscriptions -->
+            <section id="section-subscriptions" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-medium">Planes Recurrentes</h3>
+                    <button onclick="openModal('modal-subscription')" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all shadow-lg">
+                        <i class="fa-solid fa-sync mr-2"></i> Crear Suscripción
+                    </button>
+                </div>
+                <div id="subscriptions-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Sub cards populated by JS -->
+                </div>
+            </section>
+
+            <!-- Section: Master Control -->
+            <section id="section-master_control" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">Master Control Plane</h3>
+                        <p class="text-sm text-slate-500">Gestión centralizada de licencias y privilegios del ecosistema</p>
+                    </div>
+                    <button onclick="loadMasterTenants()" class="bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-900 transition-all shadow-lg">
+                        <i class="fa-solid fa-rotate mr-2"></i> Actualizar Lista
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden border">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="p-4 font-semibold text-sm">Tenant ID</th>
+                                <th class="p-4 font-semibold text-sm">Negocio</th>
+                                <th class="p-4 font-semibold text-sm">Estado Global</th>
+                                <th class="p-4 font-semibold text-sm text-right">Acciones Maestro</th>
+                            </tr>
+                        </thead>
+                        <tbody id="master-tenants-table-body">
+                            <!-- Rows populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal: Manage Entitlements -->
+    <div id="modal-entitlements" class="modal-overlay hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">Control de Privilegios</h3>
+                <span id="entitlements-tenant-id" class="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">tenant_id</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="entitlements-grid">
+                <!-- Feature toggles populated by JS -->
+            </div>
+            <div class="flex justify-end space-x-3 mt-8 border-t pt-6">
+                <button onclick="closeModal('modal-entitlements')" class="px-4 py-2 text-slate-500 hover:text-slate-700">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Client -->
+    <div id="modal-edit-client" class="modal-overlay hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8">
+            <h3 class="text-xl font-bold mb-6">Editar Cliente y Credenciales</h3>
+            <form id="form-edit-client" class="space-y-4">
+                <input type="hidden" name="client_id">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                    <input type="text" name="name" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                    <input type="email" name="email" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Access Token (MP)</label>
+                    <input type="text" name="access_token" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Public Key</label>
+                        <input type="text" name="public_key" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Client ID</label>
+                        <input type="text" name="client_id_mp" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-8">
+                    <button type="button" onclick="closeModal('modal-edit-client')" class="px-4 py-2 text-slate-500 hover:text-slate-700">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all">Actualizar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Create Client -->
+
+    <div id="modal-client" class="modal-overlay hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8">
+            <h3 class="text-xl font-bold mb-6">Agregar Nuevo Cliente</h3>
+            <form id="form-client" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                    <input type="text" name="name" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                    <input type="email" name="email" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Access Token (MP)</label>
+                    <input type="text" name="access_token" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Public Key</label>
+                        <input type="text" name="public_key" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Client ID</label>
+                        <input type="text" name="client_id" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-8">
+                    <button type="button" onclick="closeModal('modal-client')" class="px-4 py-2 text-slate-500 hover:text-slate-700">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all">Guardar Cliente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Create Payment -->
+    <div id="modal-payment" class="modal-overlay hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8">
+            <h3 class="text-xl font-bold mb-6">Generar Cobro / Link</h3>
+            <form id="form-payment" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Título del Producto</label>
+                    <input type="text" name="title" required placeholder="Ej: Plan Premium Mensual" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Monto</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-slate-400">$</span>
+                        <input type="number" name="amount" required step="0.01" class="w-full border rounded-lg pl-7 pr-3 py-2 focus:ring-2 focus:ring-green-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+                    <textarea name="description" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 outline-none" rows="3"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 mt-8">
+                    <button type="button" onclick="closeModal('modal-payment')" class="px-4 py-2 text-slate-500 hover:text-slate-700">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition-all">Generar Pago (Link & QR)</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Create Subscription -->
+    <div id="modal-subscription" class="modal-overlay hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8">
+            <h3 class="text-xl font-bold mb-6">Crear Suscripción Recurrente</h3>
+            <form id="form-subscription" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Monto Mensual</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2 text-slate-400">$</span>
+                        <input type="number" name="amount" required step="0.01" class="w-full border rounded-lg pl-7 pr-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Frecuencia</label>
+                    <select name="frequency" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none">
+                        <option value="monthly">Mensual</option>
+                        <option value="yearly">Anual</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ID del Plan (Opcional)</label>
+                    <input type="text" name="plan_id" placeholder="Ej: plan_premium_01" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none">
+                </div>
+                <div class="flex justify-end space-x-3 mt-8">
+                    <button type="button" onclick="closeModal('modal-subscription')" class="px-4 py-2 text-slate-500 hover:text-slate-700">Cancelar</button>
+                    <button type="submit" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-purple-700 transition-all">Activar Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-3"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-slate-900/20 backdrop-blur-[2px] z-[100] flex items-center justify-center">
+        <div class="bg-white p-4 rounded-full shadow-xl">
+            <i class="fa-solid fa-circle-notch fa-spin text-blue-600 text-2xl"></i>
+        </div>
+    </div>
+
+    <!-- Modal: QR Code Display -->
+    <div id="modal-qr" class="modal-overlay hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center">
+            <h3 class="text-xl font-bold mb-4">Código QR de Pago</h3>
+            <div class="bg-slate-100 p-4 rounded-xl inline-block mb-6">
+                <img id="qr-image" src="" alt="Payment QR Code" class="w-64 h-64">
+            </div>
+            <p class="text-sm text-slate-500 mb-6">Escanea este código con tu aplicación de Mercado Pago o cámara para pagar.</p>
+            <button onclick="closeModal('modal-qr')" class="w-full bg-slate-800 text-white px-6 py-2 rounded-lg font-medium hover:bg-black transition-all">Cerrar</button>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
