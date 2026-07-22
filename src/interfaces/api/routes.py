@@ -144,18 +144,41 @@ def provision_client():
     finally:
         db.close()
 
-@app.route("/subscriptions/<int:client_id>", methods=["GET"])
-def list_subscriptions(client_id):
-    """Lists all subscriptions for a specific client."""
-    db = SessionLocal()
+from src.core.infra_api_client import InfraAPIClient
+
+@app.route("/api/admin/subscriptions", methods=["GET"])
+def get_all_subscriptions():
+    """Endpoint de administración: Lista todos los dueños con sus planes desde Infra."""
     try:
-        cmd = CommandRegistry.get_command("subscription:list")
-        subscriptions = cmd.execute(db=db, client_id=client_id)
-        return jsonify({"status": "success", "subscriptions": subscriptions})
+        infra = InfraAPIClient()
+        result = infra.execute("list-owners", {})
+        
+        if result.get("status") == "success":
+            return jsonify({
+                "status": "success",
+                "subscriptions": result.get("owners", [])
+            })
+        else:
+            return jsonify({"status": "error", "message": "Error al obtener datos de Infra"}), 500
+            
     except Exception as e:
         return jsonify({"status": "error", "detail": str(e)}), 500
-    finally:
-        db.close()
+
+@app.route("/api/admin/subscriptions/update", methods=["POST"])
+def update_subscription_plan():
+    """Actualiza el plan de un cliente manualmente desde la interfaz administrativa."""
+    data = request.json
+    try:
+        infra = InfraAPIClient()
+        # Llamamos al comando 'client-update-plan' que definimos en infra/client.js
+        result = infra.execute("client-update-plan", {
+            "clienteId": data.get("clienteId"),
+            "plan": data.get("plan"),
+            "expiryDate": data.get("expiryDate")
+        })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "detail": str(e)}), 500
 
 @app.route("/subscriptions", methods=["POST"])
 def create_subscription():
